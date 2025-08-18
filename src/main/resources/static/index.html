@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Management System</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1><i class="fas fa-calendar-alt"></i> Leave Management System</h1>
+            <div class="user-info">
+                <span id="currentUser">Welcome, Admin</span>
+                <button class="btn btn-secondary" onclick="showApiDocs()">
+                    <i class="fas fa-book"></i> API Docs
+                </button>
+            </div>
+        </header>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="showTab('dashboard')">
+                <i class="fas fa-tachometer-alt"></i> Dashboard
+            </button>
+            <button class="tab-btn" onclick="showTab('employees')">
+                <i class="fas fa-users"></i> Employees
+            </button>
+            <button class="tab-btn" onclick="showTab('leave-requests')">
+                <i class="fas fa-paper-plane"></i> Leave Requests
+            </button>
+            <button class="tab-btn" onclick="showTab('approvals')">
+                <i class="fas fa-check-circle"></i> Approvals
+            </button>
+            <button class="tab-btn" onclick="showTab('balances')">
+                <i class="fas fa-chart-bar"></i> Balances
+            </button>
+        </nav>
+
+        <main class="main-content">
+            <!-- Dashboard Tab -->
+            <div id="dashboard" class="tab-content active">
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-users"></i></div>
+                        <div class="stat-info">
+                            <h3 id="totalEmployees">0</h3>
+                            <p>Total Employees</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                        <div class="stat-info">
+                            <h3 id="pendingRequests">0</h3>
+                            <p>Pending Requests</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-check"></i></div>
+                        <div class="stat-info">
+                            <h3 id="approvedRequests">0</h3>
+                            <p>Approved Requests</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="fas fa-times"></i></div>
+                        <div class="stat-info">
+                            <h3 id="rejectedRequests">0</h3>
+                            <p>Rejected Requests</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="recent-activity">
+                    <h2>Recent Leave Requests</h2>
+                    <div id="recentRequests" class="activity-list">
+                        <!-- Recent requests will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees Tab -->
+            <div id="employees" class="tab-content">
+                <div class="section-header">
+                    <h2>Employee Management</h2>
+                    <button class="btn btn-primary" onclick="showAddEmployeeModal()">
+                        <i class="fas fa-plus"></i> Add Employee
+                    </button>
+                </div>
+                <div id="employeesList" class="data-table">
+                    <!-- Employees will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Leave Requests Tab -->
+            <div id="leave-requests" class="tab-content">
+                <div class="section-header">
+                    <h2>Leave Requests</h2>
+                    <button class="btn btn-primary" onclick="showAddLeaveModal()">
+                        <i class="fas fa-plus"></i> Apply for Leave
+                    </button>
+                </div>
+                <div id="leaveRequestsList" class="data-table">
+                    <!-- Leave requests will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Approvals Tab -->
+            <div id="approvals" class="tab-content">
+                <div class="section-header">
+                    <h2>Pending Approvals</h2>
+                    <p>Review and approve/reject leave requests</p>
+                </div>
+                <div id="pendingApprovals" class="data-table">
+                    <!-- Pending approvals will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Balances Tab -->
+            <div id="balances" class="tab-content">
+                <div class="section-header">
+                    <h2>Leave Balances</h2>
+                    <button class="btn btn-primary" onclick="showInitializeBalanceModal()">
+                        <i class="fas fa-plus"></i> Initialize Balance
+                    </button>
+                </div>
+                <div id="balancesList" class="data-table">
+                    <!-- Balances will be loaded here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="addEmployeeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add New Employee</h3>
+                <span class="close" onclick="closeModal('addEmployeeModal')">&times;</span>
+            </div>
+            <form id="addEmployeeForm">
+                <div class="form-group">
+                    <label>First Name:</label>
+                    <input type="text" name="firstName" required>
+                </div>
+                <div class="form-group">
+                    <label>Last Name:</label>
+                    <input type="text" name="lastName" required>
+                </div>
+                <div class="form-group">
+                    <label>Email:</label>
+                    <input type="email" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label>Department:</label>
+                    <input type="text" name="department" required>
+                </div>
+                <div class="form-group">
+                    <label>Position:</label>
+                    <input type="text" name="position" required>
+                </div>
+                <div class="form-group">
+                    <label>Manager ID (optional):</label>
+                    <input type="number" name="managerId">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addEmployeeModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Employee</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="addLeaveModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Apply for Leave</h3>
+                <span class="close" onclick="closeModal('addLeaveModal')">&times;</span>
+            </div>
+            <form id="addLeaveForm">
+                <div class="form-group">
+                    <label>Employee:</label>
+                    <select name="employeeId" id="leaveEmployeeSelect" required>
+                        <option value="">Select Employee</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Leave Type:</label>
+                    <select name="leaveType" required>
+                        <option value="VACATION">Vacation</option>
+                        <option value="SICK">Sick Leave</option>
+                        <option value="PERSONAL">Personal</option>
+                        <option value="EMERGENCY">Emergency</option>
+                        <option value="MATERNITY">Maternity</option>
+                        <option value="PATERNITY">Paternity</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Start Date:</label>
+                    <input type="date" name="startDate" required>
+                </div>
+                <div class="form-group">
+                    <label>End Date:</label>
+                    <input type="date" name="endDate" required>
+                </div>
+                <div class="form-group">
+                    <label>Half Day:</label>
+                    <input type="checkbox" name="halfDay">
+                </div>
+                <div class="form-group">
+                    <label>Reason:</label>
+                    <textarea name="reason" rows="3" required></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addLeaveModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="initializeBalanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Initialize Leave Balance</h3>
+                <span class="close" onclick="closeModal('initializeBalanceModal')">&times;</span>
+            </div>
+            <form id="initializeBalanceForm">
+                <div class="form-group">
+                    <label>Employee:</label>
+                    <select name="employeeId" id="balanceEmployeeSelect" required>
+                        <option value="">Select Employee</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Leave Type:</label>
+                    <select name="leaveType" required>
+                        <option value="VACATION">Vacation</option>
+                        <option value="SICK">Sick Leave</option>
+                        <option value="PERSONAL">Personal</option>
+                        <option value="EMERGENCY">Emergency</option>
+                        <option value="MATERNITY">Maternity</option>
+                        <option value="PATERNITY">Paternity</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Year:</label>
+                    <input type="number" name="year" value="2024" required>
+                </div>
+                <div class="form-group">
+                    <label>Total Days:</label>
+                    <input type="number" name="totalDays" step="0.5" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('initializeBalanceModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Initialize Balance</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

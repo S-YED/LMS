@@ -1,0 +1,400 @@
+# Docker Compose for Production Deployment
+version: '3.8'
+
+services:
+  # Load Balancer (Nginx)
+  nginx:
+    image: nginx:alpine
+    container_name: leave-management-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app1
+      - app2
+    networks:
+      - leave-management-frontend
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Application Instance 1
+  app1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leave-management-app1
+    environment:
+      - SPRING_PROFILES_ACTIVE=production,docker
+      - DATABASE_URL=jdbc:mysql://mysql-master:3306/leave_management_db?useSSL=true&requireSSL=true&serverTimezone=UTC
+      - DATABASE_USERNAME=${DB_USERNAME}
+      - DATABASE_PASSWORD=${DB_PASSWORD}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_SMTP_AUTH=true
+      - MAIL_SMTP_STARTTLS=true
+      - JPA_DDL_AUTO=validate
+      - JPA_SHOW_SQL=false
+      - LOG_LEVEL_ROOT=WARN
+      - LOG_LEVEL_APP=INFO
+      - MANAGEMENT_ENDPOINTS=health,info
+      - ERROR_INCLUDE_STACKTRACE=never
+      - API_DOCS_ENABLED=false
+      - SWAGGER_UI_ENABLED=false
+      - JAVA_OPTS=-Xmx1g -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    volumes:
+      - app1_logs:/app/logs
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Application Instance 2
+  app2:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: leave-management-app2
+    environment:
+      - SPRING_PROFILES_ACTIVE=production,docker
+      - DATABASE_URL=jdbc:mysql://mysql-master:3306/leave_management_db?useSSL=true&requireSSL=true&serverTimezone=UTC
+      - DATABASE_USERNAME=${DB_USERNAME}
+      - DATABASE_PASSWORD=${DB_PASSWORD}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=${MAIL_PORT}
+      - MAIL_USERNAME=${MAIL_USERNAME}
+      - MAIL_PASSWORD=${MAIL_PASSWORD}
+      - MAIL_SMTP_AUTH=true
+      - MAIL_SMTP_STARTTLS=true
+      - JPA_DDL_AUTO=validate
+      - JPA_SHOW_SQL=false
+      - LOG_LEVEL_ROOT=WARN
+      - LOG_LEVEL_APP=INFO
+      - MANAGEMENT_ENDPOINTS=health,info
+      - ERROR_INCLUDE_STACKTRACE=never
+      - API_DOCS_ENABLED=false
+      - SWAGGER_UI_ENABLED=false
+      - JAVA_OPTS=-Xmx1g -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+      redis-master:
+        condition: service_healthy
+    volumes:
+      - app2_logs:/app/logs
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # MySQL Master Database
+  mysql-master:
+    image: mysql:8.0
+    container_name: leave-management-mysql-master
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: leave_management_db
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_REPLICATION_MODE: master
+      MYSQL_REPLICATION_USER: replicator
+      MYSQL_REPLICATION_PASSWORD: ${DB_REPLICATION_PASSWORD}
+    volumes:
+      - mysql_master_data:/var/lib/mysql
+      - ./mysql/master.cnf:/etc/mysql/conf.d/master.cnf:ro
+      - mysql_master_logs:/var/log/mysql
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    command: --default-authentication-plugin=mysql_native_password --log-bin=mysql-bin --server-id=1
+
+  # MySQL Slave Database (Read Replica)
+  mysql-slave:
+    image: mysql:8.0
+    container_name: leave-management-mysql-slave
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: leave_management_db
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_REPLICATION_MODE: slave
+      MYSQL_REPLICATION_USER: replicator
+      MYSQL_REPLICATION_PASSWORD: ${DB_REPLICATION_PASSWORD}
+      MYSQL_MASTER_HOST: mysql-master
+      MYSQL_MASTER_PORT_NUMBER: 3306
+      MYSQL_MASTER_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_slave_data:/var/lib/mysql
+      - ./mysql/slave.cnf:/etc/mysql/conf.d/slave.cnf:ro
+      - mysql_slave_logs:/var/log/mysql
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    depends_on:
+      mysql-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${DB_USERNAME}", "-p${DB_PASSWORD}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.5'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    command: --default-authentication-plugin=mysql_native_password --server-id=2
+
+  # Redis Master for Caching
+  redis-master:
+    image: redis:7-alpine
+    container_name: leave-management-redis-master
+    volumes:
+      - redis_master_data:/data
+      - ./redis/redis-master.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  # Redis Slave for High Availability
+  redis-slave:
+    image: redis:7-alpine
+    container_name: leave-management-redis-slave
+    volumes:
+      - redis_slave_data:/data
+      - ./redis/redis-slave.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    depends_on:
+      redis-master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    command: redis-server /usr/local/etc/redis/redis.conf
+
+  # Log Aggregation (ELK Stack - Elasticsearch)
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: leave-management-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Log Aggregation (Logstash)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: leave-management-logstash
+    volumes:
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - ./logstash/config:/usr/share/logstash/config:ro
+      - app1_logs:/app1_logs:ro
+      - app2_logs:/app2_logs:ro
+      - nginx_logs:/nginx_logs:ro
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  # Monitoring (Prometheus)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: leave-management-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Monitoring (Grafana)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: leave-management-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    networks:
+      - leave-management-backend
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+volumes:
+  mysql_master_data:
+    driver: local
+  mysql_slave_data:
+    driver: local
+  mysql_master_logs:
+    driver: local
+  mysql_slave_logs:
+    driver: local
+  redis_master_data:
+    driver: local
+  redis_slave_data:
+    driver: local
+  app1_logs:
+    driver: local
+  app2_logs:
+    driver: local
+  nginx_logs:
+    driver: local
+  elasticsearch_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  leave-management-frontend:
+    driver: bridge
+    name: leave-management-frontend
+  leave-management-backend:
+    driver: bridge
+    name: leave-management-backend
+    internal: true  # Backend network is internal for security
