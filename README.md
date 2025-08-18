@@ -778,8 +778,7 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 For support and questions:
 - **Issues**: Create an issue in the GitHub repository
 - **Documentation**: Check this README and Swagger UI
-- **Email**: support@company.com (configure as needed)
-
+- **Email**: skm.exec@gmail.com
 ## 🙏 Acknowledgments
 
 - Spring Boot team for the excellent framework
