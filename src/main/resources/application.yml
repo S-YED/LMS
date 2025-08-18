@@ -1,0 +1,140 @@
+spring:
+  application:
+    name: mini-leave-management-system
+    version: 1.0.0
+  
+  profiles:
+    active: local
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+        generate_statistics: false
+  
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      pool-name: LeaveManagementHikariCP
+  
+  # Email configuration (common settings)
+  mail:
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
+
+# Server configuration
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# Management endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,env,configprops
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+    info:
+      enabled: true
+  info:
+    env:
+      enabled: true
+    java:
+      enabled: true
+    os:
+      enabled: true
+
+# API Documentation
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    display-request-duration: true
+    display-operation-id: true
+  show-actuator: false
+
+# Application specific configuration
+app:
+  leave:
+    # Default leave allocations for new employees
+    default-allocations:
+      vacation: 20
+      sick: 10
+      personal: 5
+      emergency: 2
+    # Business rules
+    max-emergency-days: 2
+    max-backdated-days: 30
+    low-balance-threshold: 5
+    # Working days configuration
+    working-days:
+      - MONDAY
+      - TUESDAY
+      - WEDNESDAY
+      - THURSDAY
+      - FRIDAY
+  
+  # Email notification settings
+  notifications:
+    enabled: true
+    from-email: noreply@company.com
+    from-name: Leave Management System
+    templates:
+      leave-applied: "Leave application submitted"
+      leave-approved: "Leave request approved"
+      leave-rejected: "Leave request rejected"
+      low-balance-warning: "Low leave balance warning"
+
+# Logging configuration
+logging:
+  level:
+    root: INFO
+    com.company.leavemanagementsystem: INFO
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/leave-management.log
+    max-size: 10MB
+    max-history: 30

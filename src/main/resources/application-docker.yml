@@ -1,0 +1,142 @@
+# Docker Configuration
+spring:
+  datasource:
+    url: ${DATABASE_URL:jdbc:mysql://mysql:3306/leave_management_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DATABASE_USERNAME:leave_user}
+    password: ${DATABASE_PASSWORD:leave_password}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: ${DB_POOL_MIN_IDLE:5}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      pool-name: LeaveManagementHikariCP-Docker
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQLDialect
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+  
+  # Email configuration for Docker
+  mail:
+    host: ${MAIL_HOST:mailhog}  # Default to MailHog for development
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${MAIL_SMTP_STARTTLS:false}
+        debug: ${MAIL_DEBUG:false}
+
+# Server configuration for Docker
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+  error:
+    include-stacktrace: ${ERROR_INCLUDE_STACKTRACE:never}
+    include-message: ${ERROR_INCLUDE_MESSAGE:always}
+
+# Management endpoints for Docker
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${MANAGEMENT_ENDPOINTS:health,info,metrics}
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when-authorized}
+      show-components: ${MANAGEMENT_HEALTH_SHOW_COMPONENTS:always}
+    info:
+      enabled: true
+  info:
+    env:
+      enabled: ${MANAGEMENT_INFO_ENV:true}
+    java:
+      enabled: true
+    os:
+      enabled: ${MANAGEMENT_INFO_OS:true}
+  server:
+    port: ${MANAGEMENT_PORT:8080}  # Same port as main app by default
+
+# API Documentation for Docker
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: ${SWAGGER_UI_ENABLED:true}
+    path: /swagger-ui.html
+    operationsSorter: method
+    tagsSorter: alpha
+
+# Application specific configuration for Docker
+app:
+  leave:
+    default-allocations:
+      vacation: ${LEAVE_VACATION_DAYS:20}
+      sick: ${LEAVE_SICK_DAYS:10}
+      personal: ${LEAVE_PERSONAL_DAYS:5}
+      emergency: ${LEAVE_EMERGENCY_DAYS:2}
+    max-emergency-days: ${LEAVE_MAX_EMERGENCY:2}
+    max-backdated-days: ${LEAVE_MAX_BACKDATED:30}
+    low-balance-threshold: ${LEAVE_LOW_BALANCE_THRESHOLD:5}
+    working-days:
+      - MONDAY
+      - TUESDAY
+      - WEDNESDAY
+      - THURSDAY
+      - FRIDAY
+  
+  notifications:
+    enabled: ${NOTIFICATIONS_ENABLED:true}
+    from-email: ${NOTIFICATION_FROM_EMAIL:noreply@company.com}
+    from-name: ${NOTIFICATION_FROM_NAME:Leave Management System}
+
+# Docker logging configuration
+logging:
+  level:
+    root: ${LOG_LEVEL_ROOT:INFO}
+    com.company.leavemanagementsystem: ${LOG_LEVEL_APP:INFO}
+    org.springframework.web: ${LOG_LEVEL_SPRING_WEB:INFO}
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:INFO}
+    org.hibernate.SQL: ${LOG_LEVEL_HIBERNATE_SQL:WARN}
+    org.hibernate.type.descriptor.sql.BasicBinder: ${LOG_LEVEL_HIBERNATE_BINDER:WARN}
+    com.zaxxer.hikari: ${LOG_LEVEL_HIKARI:INFO}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  # In Docker, we typically log to console and let the container runtime handle file logging
+  file:
+    name: ${LOG_FILE:/app/logs/leave-management-system.log}
+    max-size: ${LOG_FILE_MAX_SIZE:50MB}
+    max-history: ${LOG_FILE_MAX_HISTORY:10}
+
+# Health check configuration for Docker
+management.health:
+  db:
+    enabled: true
+  diskspace:
+    enabled: true
+    threshold: ${HEALTH_DISKSPACE_THRESHOLD:10MB}
+  mail:
+    enabled: ${HEALTH_MAIL_ENABLED:true}
+
+# Docker-specific database initialization
+spring.sql.init:
+  mode: ${SQL_INIT_MODE:never}  # Don't initialize by default in Docker
+  continue-on-error: false

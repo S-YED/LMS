@@ -1,0 +1,111 @@
+# Test Configuration
+spring:
+  datasource:
+    # Use H2 in-memory database for testing
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 10000
+      idle-timeout: 300000
+      max-lifetime: 600000
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # Recreate schema for each test
+    show-sql: false  # Keep test output clean
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+        generate_statistics: false
+  
+  h2:
+    console:
+      enabled: true  # Enable H2 console for debugging tests
+      path: /h2-console
+  
+  # Disable email in tests
+  mail:
+    host: localhost
+    port: 25
+    username: test
+    password: test
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+        debug: false
+
+# Server configuration for tests
+server:
+  port: 0  # Use random port for tests to avoid conflicts
+  error:
+    include-stacktrace: always
+    include-message: always
+
+# Management endpoints for testing
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+
+# API Documentation disabled for tests
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Application specific configuration for testing
+app:
+  leave:
+    # Relaxed rules for testing
+    default-allocations:
+      vacation: 20
+      sick: 10
+      personal: 5
+      emergency: 2
+    max-emergency-days: 5
+    max-backdated-days: 90
+    low-balance-threshold: 2
+    working-days:
+      - MONDAY
+      - TUESDAY
+      - WEDNESDAY
+      - THURSDAY
+      - FRIDAY
+  
+  notifications:
+    enabled: false  # Disable notifications in tests
+    from-email: test@company.com
+    from-name: Test Leave Management System
+
+# Test logging configuration
+logging:
+  level:
+    root: WARN
+    com.company.leavemanagementsystem: DEBUG
+    org.springframework.web: WARN
+    org.springframework.test: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.testcontainers: INFO
+  pattern:
+    console: "%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"
+
+# Test database initialization
+spring.sql.init:
+  mode: embedded  # Only initialize for embedded databases
+  continue-on-error: false
+  schema-locations: classpath:db/migration/V1__create_schema.sql
+  data-locations: classpath:db/migration/V2__insert_sample_data.sql
