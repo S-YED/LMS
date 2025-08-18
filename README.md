@@ -784,4 +784,3 @@ For support and questions:
 - Spring Boot team for the excellent framework
 - TestContainers for integration testing capabilities
 - Docker community for containerization best practices
-- All contributors who helped improve this system
